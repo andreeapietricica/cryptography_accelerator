@@ -306,10 +306,10 @@ LB(10_363);
 `define C_MD5_MATRIX_ADDR_START             (280)
 
 // AES-128
-`define C_INITIAL_KEY_SIZE                  (16)
-`define C_NUM_ROUNDS                        (10)
-`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
-`define C_RCON_OFFSET                         (0)
+//`define C_INITIAL_KEY_SIZE                  (16)
+//`define C_NUM_ROUNDS                        (10)
+//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
+//`define C_RCON_OFFSET                         (0)
 
 //// AES-192
 //`define C_INITIAL_KEY_SIZE                  (24)
@@ -318,10 +318,10 @@ LB(10_363);
 //`define C_RCON_OFFSET                       (2)
 
 //// AES-256
-//`define C_INITIAL_KEY_SIZE                  (32)
-//`define C_NUM_ROUNDS                        (7)
-//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
-//`define C_RCON_OFFSET                       (3)
+`define C_INITIAL_KEY_SIZE                  (32)
+`define C_NUM_ROUNDS                        (7)
+`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
+`define C_RCON_OFFSET                       (3)
 
 `define C_LABEL_SBOX_STORE_LOOP             (9001)
 `define C_LABEL_KEY_STORE_LOOP              (9002)
@@ -639,20 +639,6 @@ LB(9000);
         cBRNZDEC(`C_LABEL_KEY_EXPANSION);                                    NOP;
         
         
-//    cRESREADY;			NOP;
-//	cHALT;				NOP;
-
-// pt incarcare din controller in celule
-//cNOP;        NOP;
-//cLOAD(X);    NOP;
-//cNOP;        NOP;// sau aici , not sure
-//cNOP;        CLOAD;// incarca acumulatorul controlerului in acumulatorul fiecarei celule
-//cNOP;        NOP;
-//cNOP;        NOP;
-//cNOP;        NOP;
-//cNOP;        NOP;
-
-
 /* 
     Start encryption - one per cell
 */
@@ -678,33 +664,6 @@ LB(1050);
         cSTACK_POP;                                                         CLOAD;
         cNOP;                                                               RISTORE(1);
         cBRNZDEC(1051);                                                     NOP;
-
-	
-	
-//// Store MD5 matrix  -- TODO: decide if this should be moved in controller
-//    cNOP;                                                                    VLOAD(0);
-//    cNOP;                                                                    ADDRSTORE;
-//    cVLOAD(`C_MD5_MATRIX_ADDR_START);                                        VLOAD(2);
-//    cNOP;                                                                    NOP;
-//    cVADD(5);                                                                CRSTORE;
-//    cVADD(5);                                                                CRSTORE;
-//    cVADD(5);                                                                CRSTORE;
-//    cNOP;                                                                    CRSTORE;
-//    cVADD(-1);                                                               VLOAD(1);
-//    cVADD(-1);                                                               CRSTORE;
-//    cVADD(-4);                                                               CRSTORE;
-//    cVADD(-1);                                                               CRSTORE;
-//    cVADD(-1);                                                               CRSTORE;
-//    cVADD(-3);                                                               CRSTORE;
-//    cVADD(-1);                                                               CRSTORE;
-//    cVADD(-1);                                                               CRSTORE;
-//    cNOP;                                                                    CRSTORE;
-//    cVADD(-1);                                                               VLOAD(3);
-//    cVADD(5);                                                                CRSTORE;
-//    cVADD(5);                                                                CRSTORE;
-//    cVADD(1);                                                                CRSTORE;
-//    cNOP;                                                                CRSTORE;
-    
     
 // get key 0 from controller and xor with data - first round function
 
@@ -713,7 +672,7 @@ LB(1050);
     cADDRSTORE;		                                                        ADDRSTORE;
 //	cVLOAD(1);		                                                        NOP;
 //	cSETDEC;		                                                        NOP;
-	cVLOAD(`C_INITIAL_KEY_SIZE - 1);		                                            NOP;
+	cVLOAD(16 - 1);		                                            NOP;
 	
 	//store matrix
 	LB(1052);
@@ -723,10 +682,14 @@ LB(1050);
         cSTACK_POP;                                                         CLOAD;
         cNOP;                                                               RIXOR(1);
         cBRNZDEC(1052);                                              RSTORE(0);
-        
-        
-// S-BOX substitution   
-        
+   
+   // Rounds begin      
+   cVLOAD(13);   /*10 rouns*/                                                NOP;
+   LB(1061); 
+      cSTORE(299);                                                   NOP;   // TODO: make address a define
+      
+    // S-BOX substitution   
+            
     cVLOAD(`C_DATA_ADDR_START);                                                    VLOAD(0);
     cVSTACK_PUSH_LOAD(16-1);                                        ADDRSTORE;
 
@@ -769,18 +732,21 @@ LB(1050);
     cNOP;                                                         CRSTORE;        // store 315 into 303
     
 
-
+    // Check if this is the last round
+    cLOAD(299);                                                   NOP;   // TODO: make address a define
+    cBRZ(1062);                                               NOP;
+    
 // Mix columns
 
     cVLOAD(`C_MD5_MATRIX_ADDR_START - 1);	                      VLOAD(`C_DATA_ADDR_START - 1);
     cSEL_ADDRREG(2);		                                      NOP;
     cADDRSTORE;		                                              ADDRSTORE;
-	cVLOAD(4 - 1);		                                            NOP;
-	LB(1054);    // loop over data columns
-	    cVSTACK_PUSH_LOAD(4-1);                                         NOP;
-	    LB(1055);   // loop over rows from MD5 matrix
-	       cVSTACK_PUSH_LOAD(4-1);                                         VLOAD(0);
-	           LB(1056);  // loop over elements from row (for MD5 matrix) and column (for data)
+    cVLOAD(4 - 1);		                                            NOP;
+    LB(1054);    // loop over data columns
+        cVSTACK_PUSH_LOAD(4-1);                                         NOP;
+        LB(1055);   // loop over rows from MD5 matrix
+           cVSTACK_PUSH_LOAD(4-1);                                         VLOAD(0);
+               LB(1056);  // loop over elements from row (for MD5 matrix) and column (for data)
                    cRISTACK_PUSH_LOAD(1);                                      NOP;
                    
                    // if val == 2
@@ -811,9 +777,9 @@ LB(1050);
                    cSTACK_POP;                                                 SXOR;   // add (xor) with the other values from column
                    cNOP;                                                       VAND(255);
                    cBRNZDEC(1056);                                             NOP;
-	       
-	       // finished one line x one column
-	       cSTACK_POP;                                                 ADDRINC(13);
+           
+           // finished one line x one column
+           cSTACK_POP;                                                 ADDRINC(13);
            cNOP;                                                       NOP;
            cNOP;                                                       CRSTORE; // store results starting from 316. Columns are reversed;
            cBRNZDEC(1055);                                             ADDRINC(-17); // go to 300 again
@@ -822,9 +788,49 @@ LB(1050);
        cSTACK_POP;                                                 NOP;
        cNOP;                                                       NOP;
        cBRNZDEC(1054);                                             NOP;
-	   
+       
+  
+  
+  // Move result after mix columns 
+       
+    cVLOAD(`C_DATA_ADDR_START + 16);                                                    VLOAD(0);
+    cVSTACK_PUSH_LOAD(4-1);                                        ADDRSTORE;
+
+    LB(1059);
+        cSTACK_SWAP();                                             NOP;
+        cNOP;                                                       NOP;
+        cVADD(1);                                                 CRLOAD;   // load val from 316
+        cVADD(1);                                                 CRSTACK_PUSH_LOAD;  // load val from 317
+        cVADD(1);                                                 CRSTACK_PUSH_LOAD; // load val from 318
+        cNOP;                                                    CRSTACK_PUSH_LOAD; // load val from 319  -- this is the first value from the result
+        // store from 300
+        cVADD(-19);                                                NOP;
+        cVADD(1);                                                      CRSTACK_STORE_POP;
+        cVADD(1);                                                  CRSTACK_STORE_POP; 
+        cVADD(1);                                                  CRSTACK_STORE_POP;
+        cVADD(17);  /* go to the second column*/                   CRSTORE;
+        cSTACK_SWAP();                                             NOP;
+        cNOP;                                                      NOP;
+        cBRNZDEC(1059);                                            NOP;  
     
+    LB(1062);  // Add round key
+    // get key i from controller and xor with data - round function
+    cSEL_ADDRREG(3);                                                     VLOAD(`C_DATA_ADDR_START - 1);
+    cVLOAD(16 - 1);		                             ADDRSTORE;
     
+    //store matrix
+    LB(1060);
+        cSTACK_PUSH_LOAD(0);                                                NOP;
+        cRILOAD(1);                                                        NOP;
+         cNOP;                                                             NOP;
+        cSTACK_POP;                                                         CLOAD;
+        cNOP;                                                               RIXOR(1);
+        cBRNZDEC(1060);                                              RSTORE(0);
+        
+       // check round number      
+    cLOAD(299);                                                   NOP;   // TODO: make address a define
+    cBRNZDEC(1061);                                              NOP;
+       
     cRESREADY;			NOP;
 	cHALT;				NOP;
     
