@@ -329,22 +329,25 @@ LB(9000);
 `define C_MD5_MATRIX_ADDR_START             (280)
 
 // AES-128
-`define C_INITIAL_KEY_SIZE                  (16)
-`define C_NUM_ROUNDS                        (10)
-`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
-`define C_RCON_OFFSET                       (0)
+//`define C_INITIAL_KEY_SIZE                  (16)
+//`define C_NUM_KEY_ROUNDS                    (10)
+//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
+//`define C_RCON_OFFSET                       (0)
+//`define C_NUM_ENCRYPTION_ROUNDS             (10)
 
 // AES-192
 //`define C_INITIAL_KEY_SIZE                  (24)
-//`define C_NUM_ROUNDS                        (8)
+//`define C_NUM_KEY_ROUNDS                    (8)
 //`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (20)
 //`define C_RCON_OFFSET                       (2)
+//`define C_NUM_ENCRYPTION_ROUNDS             (12)
 
 // AES-256
-//`define C_INITIAL_KEY_SIZE                  (32)
-//`define C_NUM_ROUNDS                        (7)
-//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
-//`define C_RCON_OFFSET                       (3)
+`define C_INITIAL_KEY_SIZE                  (32)
+`define C_NUM_KEY_ROUNDS                    (7)
+`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
+`define C_RCON_OFFSET                       (3)
+`define C_NUM_ENCRYPTION_ROUNDS             (14)
 
 `define C_LABEL_SBOX_STORE_LOOP             (9001)
 `define C_LABEL_KEY_STORE_LOOP              (9002)
@@ -441,7 +444,7 @@ LB(9000);
     cSEL_ADDRREG(3);		                                                NOP;
     cADDRSTORE;		     		                                            NOP;
     cNOP;                                                                   NOP;
-    cVLOAD(`C_NUM_ROUNDS - 1);		                                        NOP; // Store the number of rounds into val register 0
+    cVLOAD(`C_NUM_KEY_ROUNDS - 1);		                                        NOP; // Store the number of rounds into val register 0
 
 // Loop subkey generation
     LB(`C_LABEL_KEY_EXPANSION);  
@@ -449,7 +452,7 @@ LB(9000);
 // Generate i+4 (or i+6 or i+8) column key -  circular shift + substitute bytes + XOR column i XOR RconVal
 
 // Circular upward shift
-        cSTACK_PUSH_LOAD(0);                                                NOP;   // TODO: Replace with val reg0
+        cSTACK_PUSH_LOAD(0);                                                NOP;
  
         cADDRINC(`C_INITIAL_KEY_SIZE);                                      NOP;  // Go to the next column after the key ends with addr_eg3 (for first iteration addr=316)
         cADDRLOAD;                                                          NOP; 
@@ -512,7 +515,7 @@ LB(9000);
             // addr_reg2 at 315   - for the first iteration       
  
             // xor with rcon          
-            cSTACK_LOAD_LAYER1();                                           NOP;  // load the round number. TODO: replace with loading the val reg 0 if used for the loop
+            cSTACK_LOAD_LAYER1();                                           NOP;  // load the round number.
             cSEL_ADDRREG(0);                                                NOP;
             cADDRSTORE;		                                                NOP;  // Store round number in addr_reg0
             cNOP;                                                           NOP;
@@ -594,217 +597,231 @@ LB(9000);
                 LB(`C_LABEL_XOR_Kj_COLUMN_NORMAL);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
  
-                    cSEL_ADDRREG(1);                                         NOP;
-                    cRILOAD(1);                                              NOP;
-                    cSEL_ADDRREG(2); /*addr_reg2 at 316*/                    NOP;    // The addresses commented on the left are valid for the first round of AES-128              
-                    cRXOR(0); /*xor between val from 304 and val from 316*/  NOP;
-                    cADDRINC(1); /*go to 317 with addr_reg2*/                NOP;
-                    cSEL_ADDRREG(0); /*addr_reg0 at 320*/                    NOP;
-                    cRISTORE(1);   /*store to 320*/                          NOP;
-                    cBRValNZDEC(`C_LABEL_XOR_Kj_COLUMN_LOOP, 1);             NOP;
+                    cSEL_ADDRREG(1);                                        NOP;
+                    cRILOAD(1);                                             NOP;
+                    cSEL_ADDRREG(2); /*addr_reg2 at 316*/                   NOP;    // The addresses commented on the left are valid for the first round of AES-128              
+                    cRXOR(0); /*xor between val from 304 and val from 316*/ NOP;
+                    cADDRINC(1); /*go to 317 with addr_reg2*/               NOP;
+                    cSEL_ADDRREG(0); /*addr_reg0 at 320*/                   NOP;
+                    cRISTORE(1);   /*store to 320*/                         NOP;
+                    cBRValNZDEC(`C_LABEL_XOR_Kj_COLUMN_LOOP, 1);            NOP;
          
             
 //      addr_reg2 at 316
-        cSEL_ADDRREG(3);                                                     NOP;
-        cSTACK_POP;                                                          NOP;
-        cNOP;                                                                NOP;
-        cBRNZDEC(`C_LABEL_KEY_EXPANSION);                                    NOP;
+//      Pop the round number from stack
+        cSEL_ADDRREG(3);                                                    NOP;
+        cSTACK_POP;                                                         NOP;
+        cNOP;                                                               NOP;
+        cBRNZDEC(`C_LABEL_KEY_EXPANSION);                                   NOP;
         
         
 // ---------------- BLOCK ENCRYPTION --------------------------------------------------------
-///* 
-//    Start encryption - one per cell
-//*/
+/* 
+    Start encryption - one per cell
+*/
 
-//`define C_DATA_ADDR_START                             300
+`define C_DATA_ADDR_START                  (300)
+`define C_CURRENT_ROUNDS_NUM_STORE_ADDR    (299)
 
-//LB(1050);
+`define C_DATA_BLOCK_SIZE_IN_BYTES         (16)
+`define C_DATA_COLUMNS_OR_ROWS_SIZE        (4)
+`define C_MIX_COLUMN_XOR_VAL               (27)
 
-////get SBOX from controller
+`define C_LABEL_START_ENCRYPTION           (1050)
+`define C_LABEL_CPY_SBOX_INTO_ARRAY        (1051)
+`define C_LABEL_FIRST_ADD_ROUND_KEY        (1052)
+`define C_LABEL_SBOX_SUBST_STEP            (1053)
+`define C_LABEL_MIX_COLUMN_STEP            (1054)
+`define C_LABEL_MIX_COLUMN_LOOP_ROWS       (1055)
+`define C_LABEL_MIX_COLUMN_LOOP_ELEMENTS   (1056)
+`define C_LABEL_MIX_COLUMN_VAL3            (1057)
+`define C_LABEL_MIX_COLUMN_VAL1            (1058)
+`define C_LABEL_MOVE_MATRIX_AFTEX_MIX_COLS (1059)
+`define C_LABEL_ADD_ROUND_KEY_STEP_LOOP    (1060)
+`define C_LABEL_ROUNDS_LOOP                (1061)
+`define C_LABEL_ADD_ROUND_KEY_STEP         (1062)
 
-//    cVLOAD(`C_SBOX_ADDR_START - 1);	                                 	    VLOAD(`C_SBOX_ADDR_START - 1);
-//    cADDRSTORE;		                                                        ADDRSTORE;
-//	cVLOAD(1);		                                                        NOP;
-//	cSETDEC;		                                                        NOP;
-//	cVLOAD(`C_SBOX_SIZE - 1);		                                        NOP;
+LB(`C_LABEL_START_ENCRYPTION);
+
+// Get the SBOX from controller
+
+    cVLOAD(`C_SBOX_ADDR_START - 1);	                                 	    VLOAD(`C_SBOX_ADDR_START - 1);
+    cADDRSTORE;		                                                        ADDRSTORE;
+	cVLOAD(`C_SBOX_SIZE - 1);		                                        NOP;
+	cSETVAL(0);                                                             NOP;  // Set value register 0 to SBOX size -1
 	
-//	//store matrix
-//	LB(1051);
-//	    cSTACK_PUSH_LOAD(0);                                                NOP;
-//        cRILOAD(1);                                                         NOP;
-//        cNOP;                                                               NOP;
-//        cSTACK_POP;                                                         CLOAD;
-//        cNOP;                                                               RISTORE(1);
-//        cBRNZDEC(1051);                                                     NOP;
+	//store matrix
+	LB(`C_LABEL_CPY_SBOX_INTO_ARRAY); 
+        cRILOAD(1);                                                         NOP;  // Load value in acc controller
+        cNOP;                                                               NOP;
+        cNOP;                                                               CLOAD; // Get value from cooperand  and then store it into array
+        cBRValNZDEC(`C_LABEL_CPY_SBOX_INTO_ARRAY, 0);                       RISTORE(1);
     
-//// get key 0 from controller and xor with data - first round function
+// Get the initial key from controller and xor with data -> first ADD ROUND KEY function
 
-
-//    cVLOAD(`C_INITIAL_KEY_START - 1);	                                 	VLOAD(`C_DATA_ADDR_START - 1);
-//    cADDRSTORE;		                                                        ADDRSTORE;
-////	cVLOAD(1);		                                                        NOP;
-////	cSETDEC;		                                                        NOP;
-//	cVLOAD(16 - 1);		                                            NOP;
+    cVLOAD(`C_INITIAL_KEY_START - 1);	                                 	VLOAD(`C_DATA_ADDR_START - 1);
+    cADDRSTORE;		                                                        ADDRSTORE;
+	cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - 1);		                        NOP;
+	cSETVAL(0);                                                             NOP;  // Set value register 0 to data block size -1
 	
-//	//store matrix
-//	LB(1052);
-//	    cSTACK_PUSH_LOAD(0);                                                NOP;
-//        cRILOAD(1);                                                        NOP;
-//         cNOP;                                                             NOP;
-//        cSTACK_POP;                                                         CLOAD;
-//        cNOP;                                                               RIXOR(1);
-//        cBRNZDEC(1052);                                              RSTORE(0);
+    cRILOAD(1);                                                             NOP;  // Load value in acc controller
+    cNOP;                                                                   NOP; 
+	//store matrix
+	LB(`C_LABEL_FIRST_ADD_ROUND_KEY);
+        cNOP;                                                               CLOAD; // Get value from cooperand  and then XOR it with data in array
+        cRILOAD(1);                                                         RIXOR(1);
+        cBRValNZDEC(`C_LABEL_FIRST_ADD_ROUND_KEY, 0);                       RSTORE(0);
+ 
+    cADDRINC(-1);                                                           NOP;    // The addres remained ahead after the last iteration
    
-//   // Rounds begin      
-//   cVLOAD(9);   /*10 rouns*/                                                NOP;
-//   LB(1061); 
-//      cSTORE(299);                                                   NOP;   // TODO: make address a define
+   // Rounds begin      
+   cVLOAD(`C_NUM_ENCRYPTION_ROUNDS - 1);                                    NOP;
+
+   LB(`C_LABEL_ROUNDS_LOOP); 
+      cSTORE(`C_CURRENT_ROUNDS_NUM_STORE_ADDR);                             NOP;
+ 
+    // S-BOX substitution step  
       
-//    // S-BOX substitution   
-            
-//    cVLOAD(`C_DATA_ADDR_START);                                                    VLOAD(0);
-//    cVSTACK_PUSH_LOAD(16-1);                                        ADDRSTORE;
-
-//    LB(1053);
-//        cSTACK_SWAP();                                             NOP;
-//        cNOP;                                                      NOP;
-//        cNOP;                                                      CRLOAD;   // acc_array = mem [addr_reg + acc_controller];
-//        cNOP;                                                      ADDRSTORE;  // value from 300 becomes address
-//        cNOP;                                                      NOP;
-//        cNOP;                                                      RLOAD(0);
-//        cNOP;                                                      VSTACK_PUSH_LOAD(0);
-//        cNOP;                                                      ADDRSTORE;
-//        cNOP;                                                      STACK_POP;
-//        cVADD(1);                                                  CRSTORE; 
-//        cSTACK_SWAP();                                             NOP;
-//        cNOP;                                                      NOP;
-//        cBRNZDEC(1053);                                            NOP;
-   
-   
-////  Shift rows
-
-//    cVLOAD(`C_DATA_ADDR_START + 1);                                              NOP;  //  
-//    cVADD(12);                                                    CRLOAD;   // load from 301 and go to 312
-//    cVADD(-4);                                                    CRSWAP_ACC_MEM;   // swap 312 with 301
-//    cVADD(-4);                                                    CRSWAP_ACC_MEM;   // swap 309 with 312
-//    cVADD(-4);                                                    CRSWAP_ACC_MEM;   // swap 305 with 309
-//    cVADD(1);       /* go to 302  */                              CRSWAP_ACC_MEM;   // swap 301 with 305 and go to 302
+    cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - 1);                                VLOAD(0);
+    cSETVAL(1);                                                             ADDRSTORE;
+    cVLOAD(`C_DATA_ADDR_START);                                             NOP;
+    cNOP;                                                                   CRLOAD;
     
-//    cVADD(8);                                                     CRLOAD;  // load from 302 and go to 310
-//    cVADD(-8);                                                    CRSWAP_ACC_MEM;   // swap 310 with 302 and go to 302
-//    cVADD(4);                                                     CRSTORE;   // store 310 into 302 and go to 306
-//    cVADD(8);                                                     CRLOAD;    // load from 306 and go to 314
-//    cVADD(-8);                                                    CRSWAP_ACC_MEM;  // swap 314 with 306 and go to 306
-//    cVLOAD(`C_DATA_ADDR_START + 3); /* or cVADD(-3);*/                           CRSTORE;        // store 314 into 306 and go to 303
+    LB(`C_LABEL_SBOX_SUBST_STEP);
+        cNOP;                                                               ADDRSTORE;  // value from 300 becomes address
+        cNOP;                                                               NOP;
+        cNOP;                                                               RLOAD(0);   // Load SBOX value
+        cNOP;                                                               VSTACK_PUSH_LOAD(0);  // Push 0 in acc and store into addr_reg in order to have offset 0
+        cNOP;                                                               ADDRSTORE;
+        cNOP;                                                               STACK_POP;  // Get the SBOX value from stack and store into the corresponding location
+        cVADD(1);                                                           CRSTORE;
+        cBRValNZDEC(`C_LABEL_SBOX_SUBST_STEP, 1);                           CRLOAD; 
+
+    //  Shift rows step
+
+    cVLOAD(`C_DATA_ADDR_START + 1);                                         NOP;
+    cVADD(12);                                                              CRLOAD;           // load from 301 and go to 312
+    cVADD(-4);                                                              CRSWAP_ACC_MEM;   // swap 312 with 301
+    cVADD(-4);                                                              CRSWAP_ACC_MEM;   // swap 309 with 312
+    cVADD(-4);                                                              CRSWAP_ACC_MEM;   // swap 305 with 309
+    cVADD(1);       /* go to 302  */                                        CRSWAP_ACC_MEM;   // swap 301 with 305 and go to 302
     
-//    cVADD(4);                                                     CRLOAD;   // load from 303 and go to 307
-//    cVADD(4);                                                     CRSWAP_ACC_MEM;   // swap 307 with 303 and go to 311
-//    cVADD(4);                                                     CRSWAP_ACC_MEM;   // swap 311 with 307 and go to 315
-//    cVADD(-12);                                                   CRSWAP_ACC_MEM;   // swap 315 with 311 and go to 303
-//    cNOP;                                                         CRSTORE;        // store 315 into 303
+    cVADD(8);                                                               CRLOAD;           // load from 302 and go to 310
+    cVADD(-8);                                                              CRSWAP_ACC_MEM;   // swap 310 with 302 and go to 302
+    cVADD(4);                                                               CRSTORE;          // store 310 into 302 and go to 306
+    cVADD(8);                                                               CRLOAD;           // load from 306 and go to 314
+    cVADD(-8);                                                              CRSWAP_ACC_MEM;   // swap 314 with 306 and go to 306
+    cVLOAD(`C_DATA_ADDR_START + 3); /* or cVADD(-3);*/                      CRSTORE;          // store 314 into 306 and go to 303
+    
+    cVADD(4);                                                               CRLOAD;            // load from 303 and go to 307
+    cVADD(4);                                                               CRSWAP_ACC_MEM;    // swap 307 with 303 and go to 311
+    cVADD(4);                                                               CRSWAP_ACC_MEM;    // swap 311 with 307 and go to 315
+    cVADD(-12);                                                             CRSWAP_ACC_MEM;    // swap 315 with 311 and go to 303
+    cNOP;                                                                   CRSTORE;           // store 315 into 303
     
 
-//    // Check if this is the last round
-//    cLOAD(299);                                                   NOP;   // TODO: make address a define
-//    cBRZ(1062);                                               NOP;
+    // Check if this is the last round
+    cLOAD(`C_CURRENT_ROUNDS_NUM_STORE_ADDR);                                NOP;
+    cBRZ(`C_LABEL_ADD_ROUND_KEY_STEP);                                      NOP;
     
-//// Mix columns
+// Mix columns
+// Multiply in GF(2^8) MD5 matrix with every column of the data block
+// Multiply with 1 -> value stays the same
+// Multiply with 2 -> Shift left by 1 and then XOR with value 0x1B if the MSB was 1
+// Multiply with 3 -> Same for multiplying with 2, then XOR with the original value
 
-//    cVLOAD(`C_MD5_MATRIX_ADDR_START - 1);	                      VLOAD(`C_DATA_ADDR_START - 1);
-//    cSEL_ADDRREG(2);		                                      NOP;
-//    cADDRSTORE;		                                              ADDRSTORE;
-//    cVLOAD(4 - 1);		                                            NOP;
-//    LB(1054);    // loop over data columns
-//        cVSTACK_PUSH_LOAD(4-1);                                         NOP;
-//        LB(1055);   // loop over rows from MD5 matrix
-//           cVSTACK_PUSH_LOAD(4-1);                                         VLOAD(0);
-//               LB(1056);  // loop over elements from row (for MD5 matrix) and column (for data)
-//                   cRISTACK_PUSH_LOAD(1);                                      NOP;
+    cVLOAD(`C_MD5_MATRIX_ADDR_START - 1);	                                VLOAD(`C_DATA_ADDR_START - 1);
+    cSEL_ADDRREG(2);		                                                NOP;
+    cADDRSTORE;		                                                        ADDRSTORE;
+    cVLOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE - 1);		                        NOP;
+    cSETVAL(0);                                                             NOP;
+
+    LB(`C_LABEL_MIX_COLUMN_STEP);    // loop over data columns
+        cVLOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE - 1);                           NOP;
+
+        LB(`C_LABEL_MIX_COLUMN_LOOP_ROWS);   // loop over rows from MD5 matrix
+           cVSTACK_PUSH_LOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE-1);               VLOAD(0);
+            cSETVAL(1);                                                     NOP;
+               LB(`C_LABEL_MIX_COLUMN_LOOP_ELEMENTS);  // loop over elements from row (for MD5 matrix) and column (for data)
+                   cRILOAD(1);                                              NOP;
+                   // if val == 2
+                   cVXOR(2);                                                RISTACK_PUSH_LOAD(1);
+                   cBRNZ(`C_LABEL_MIX_COLUMN_VAL3);  /* go to val == 3*/    NOP;
+                   // algorithm for x2 
+                   cNOP;                                                    VMULT(2);                      
+                   cNOP;                                                    STACK_DUPLICATE;       
+                   cNOP;                                                    SHRIGHT_FIXED_AMOUNT;
+                   cNOP;                                                    VMULT(`C_MIX_COLUMN_XOR_VAL);
+                   cJMP(`C_LABEL_MIX_COLUMN_VAL1);                          SXOR;              
                    
-//                   // if val == 2
-//                   cVXOR(2);                                                   RISTACK_PUSH_LOAD(1);
-//                   cBRNZ(1057);  /* go to val == 3*/                           NOP;
-//                   // algoritm pt 2 
-//                   cNOP;                                                       VMULT(2);                      
-//                   cNOP;                                                       STACK_DUPLICATE;       
-//                   cNOP;                                                       SHRIGHT_FIXED_AMOUNT;
-//                   cNOP;                                                       VMULT(27);
-//                   cNOP;                                                       SXOR;              
-//                   cJMP(1058);                                                 NOP;
-                   
-//               LB(1057);  //  if val == 3 
-//                   cRLOAD(0);                                              NOP;
-//                   cVXOR(3);                                              NOP;
-//                   cBRNZ(1058);  /*go to val = 1 */                       NOP;
-//                   // algoritm pt 3
-////                   cNOP;                                                       STACK_DUPLICATE;  
-//                   cNOP;                                                       VMULT(2);                      
-//                   cNOP;                                                       STACK_DUPLICATE;       
-//                   cNOP;                                                       SHRIGHT_FIXED_AMOUNT;
-//                   cNOP;                                                       VMULT(27);
-//                   cNOP;                                                       SXOR; 
-//                   cNOP;                                                       RXOR(0);
+               LB(`C_LABEL_MIX_COLUMN_VAL3);  //  if val == 3 
+                   cRLOAD(0);                                               NOP;
+                   cVXOR(3);                                                NOP;
+                   cBRNZ(`C_LABEL_MIX_COLUMN_VAL1);  /*go to val = 1 */     NOP;
+                   // algorithm for x3
+                   cNOP;                                                    VMULT(2);                      
+                   cNOP;                                                    STACK_DUPLICATE;       
+                   cNOP;                                                    SHRIGHT_FIXED_AMOUNT;
+                   cNOP;                                                    VMULT(`C_MIX_COLUMN_XOR_VAL);
+                   cNOP;                                                    SXOR; 
+                   cNOP;                                                    RXOR(0);
                                  
-//               LB(1058);  //  if val == 1
-//                   cSTACK_POP;                                                 SXOR;   // add (xor) with the other values from column
-//                   cNOP;                                                       VAND(255);
-//                   cBRNZDEC(1056);                                             NOP;
+               LB(`C_LABEL_MIX_COLUMN_VAL1);  //  if val == 1
+                   cNOP;                                                    SXOR;   // add (xor) with the other values from column
+                   cBRValNZDEC(`C_LABEL_MIX_COLUMN_LOOP_ELEMENTS, 1);       VAND(255);
            
-//           // finished one line x one column
-//           cSTACK_POP;                                                 ADDRINC(13);
-//           cNOP;                                                       NOP;
-//           cNOP;                                                       CRSTORE; // store results starting from 316. Columns are reversed;
-//           cBRNZDEC(1055);                                             ADDRINC(-17); // go to 300 again
-//        // finished matrix x one column   
-//       cADDRINC(-16);                                              ADDRINC(4);   // go to the next column and reiterate matrix
-//       cSTACK_POP;                                                 NOP;
-//       cNOP;                                                       NOP;
-//       cBRNZDEC(1054);                                             NOP;
+           // finished one line x one column
+           cSTACK_POP;                                                      ADDRINC(13);
+           cNOP;                                                            NOP;  
+           cNOP;                                                            CRSTORE; // store results starting from 316. Columns are reversed;
+           cBRNZDEC(`C_LABEL_MIX_COLUMN_LOOP_ROWS);                         ADDRINC(-17); // go to 300 again
+        // finished matrix x one column   
+       cADDRINC(-`C_DATA_BLOCK_SIZE_IN_BYTES);                              ADDRINC(4);   // go to the next column and reiterate matrix
+       cBRValNZDEC(`C_LABEL_MIX_COLUMN_STEP, 0);                            NOP;
        
   
   
-//  // Move result after mix columns 
-       
-//    cVLOAD(`C_DATA_ADDR_START + 16);                                                    VLOAD(0);
-//    cVSTACK_PUSH_LOAD(4-1);                                        ADDRSTORE;
+  // Move result after mix columns     
+              
+    cVLOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE - 1);                               VLOAD(0);
+    cSETVAL(0);                                                             ADDRSTORE;     
+                                      
+    cVLOAD(`C_DATA_ADDR_START + `C_DATA_BLOCK_SIZE_IN_BYTES);               NOP;
+    cNOP;                                                                   NOP; 
+    LB(`C_LABEL_MOVE_MATRIX_AFTEX_MIX_COLS);
+        cVADD(1);                                                           CRLOAD;   // load val from 316
+        cVADD(1);                                                           CRSTACK_PUSH_LOAD;  // load val from 317
+        cVADD(1);                                                           CRSTACK_PUSH_LOAD; // load val from 318
+        cVADD(-19);                                                         CRSTACK_PUSH_LOAD; // load val from 319  -- this is the first value from the result
+        // store from 300
+        cVADD(1);                                                           CRSTACK_STORE_POP;
+        cVADD(1);                                                           CRSTACK_STORE_POP; 
+        cVADD(1);                                                           CRSTACK_STORE_POP;
+        cVADD(17);  /* go to the second column*/                            CRSTORE;
+        cBRValNZDEC(`C_LABEL_MOVE_MATRIX_AFTEX_MIX_COLS, 0);                NOP;
+    
+   // Add round key step
+    LB(`C_LABEL_ADD_ROUND_KEY_STEP);  // Add round key
+    // get key i from controller and xor with data - round function
+    cSEL_ADDRREG(3);                                                        VLOAD(`C_DATA_ADDR_START - 1);
+    cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - 1);		                        ADDRSTORE;
+    cSETVAL(0);                                                             NOP;
 
-//    LB(1059);
-//        cSTACK_SWAP();                                             NOP;
-//        cNOP;                                                       NOP;
-//        cVADD(1);                                                 CRLOAD;   // load val from 316
-//        cVADD(1);                                                 CRSTACK_PUSH_LOAD;  // load val from 317
-//        cVADD(1);                                                 CRSTACK_PUSH_LOAD; // load val from 318
-//        cNOP;                                                    CRSTACK_PUSH_LOAD; // load val from 319  -- this is the first value from the result
-//        // store from 300
-//        cVADD(-19);                                                NOP;
-//        cVADD(1);                                                      CRSTACK_STORE_POP;
-//        cVADD(1);                                                  CRSTACK_STORE_POP; 
-//        cVADD(1);                                                  CRSTACK_STORE_POP;
-//        cVADD(17);  /* go to the second column*/                   CRSTORE;
-//        cSTACK_SWAP();                                             NOP;
-//        cNOP;                                                      NOP;
-//        cBRNZDEC(1059);                                            NOP;  
+    // XOR matrix with key
+    cRILOAD(1);                                                             NOP;
+    cNOP;                                                                   NOP;
+    LB(`C_LABEL_ADD_ROUND_KEY_STEP_LOOP);
+        cNOP;                                                               CLOAD;
+        cRILOAD(1);                                                         RIXOR(1);
+        cBRValNZDEC(`C_LABEL_ADD_ROUND_KEY_STEP_LOOP, 0);                   RSTORE(0);
+
+    cADDRINC(-1);                                                           NOP;    // The addres remained ahead after the last iteration
     
-//    LB(1062);  // Add round key
-//    // get key i from controller and xor with data - round function
-//    cSEL_ADDRREG(3);                                                     VLOAD(`C_DATA_ADDR_START - 1);
-//    cVLOAD(16 - 1);		                             ADDRSTORE;
-    
-//    //store matrix
-//    LB(1060);
-//        cSTACK_PUSH_LOAD(0);                                                NOP;
-//        cRILOAD(1);                                                        NOP;
-//         cNOP;                                                             NOP;
-//        cSTACK_POP;                                                         CLOAD;
-//        cNOP;                                                               RIXOR(1);
-//        cBRNZDEC(1060);                                              RSTORE(0);
-        
-//       // check round number      
-//    cLOAD(299);                                                   NOP;   // TODO: make address a define
-//    cBRNZDEC(1061);                                              NOP;
-       
-    
-	cHALT;				NOP;
+    // check round number      
+    cLOAD(`C_CURRENT_ROUNDS_NUM_STORE_ADDR);                                NOP;
+    cBRNZDEC(`C_LABEL_ROUNDS_LOOP);                                         NOP;
+
+	cHALT;				                                                    NOP;
     
 
 
