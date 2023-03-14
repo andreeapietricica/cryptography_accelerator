@@ -336,18 +336,18 @@ LB(9000);
 //`define C_NUM_ENCRYPTION_ROUNDS             (10)
 
 // AES-192
-//`define C_INITIAL_KEY_SIZE                  (24)
-//`define C_NUM_KEY_ROUNDS                    (8)
-//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (20)
-//`define C_RCON_OFFSET                       (2)
-//`define C_NUM_ENCRYPTION_ROUNDS             (12)
+`define C_INITIAL_KEY_SIZE                  (24)
+`define C_NUM_KEY_ROUNDS                    (8)
+`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (20)
+`define C_RCON_OFFSET                       (2)
+`define C_NUM_ENCRYPTION_ROUNDS             (12)
 
 // AES-256
-`define C_INITIAL_KEY_SIZE                  (32)
-`define C_NUM_KEY_ROUNDS                    (7)
-`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
-`define C_RCON_OFFSET                       (3)
-`define C_NUM_ENCRYPTION_ROUNDS             (14)
+//`define C_INITIAL_KEY_SIZE                  (32)
+//`define C_NUM_KEY_ROUNDS                    (7)
+//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
+//`define C_RCON_OFFSET                       (3)
+//`define C_NUM_ENCRYPTION_ROUNDS             (14)
 
 `define C_LABEL_SBOX_STORE_LOOP             (9001)
 `define C_LABEL_KEY_STORE_LOOP              (9002)
@@ -614,6 +614,7 @@ LB(9000);
         cNOP;                                                               NOP;
         cBRNZDEC(`C_LABEL_KEY_EXPANSION);                                   NOP;
         
+        cHALT;																NOP;
         
 // ---------------- BLOCK ENCRYPTION --------------------------------------------------------
 /* 
@@ -815,7 +816,7 @@ LB(`C_LABEL_START_ENCRYPTION);
         cRILOAD(1);                                                         RIXOR(1);
         cBRValNZDEC(`C_LABEL_ADD_ROUND_KEY_STEP_LOOP, 0);                   RSTORE(0);
 
-    cADDRINC(-1);                                                           NOP;    // The addres remained ahead after the last iteration
+    cADDRINC(-1);                                                           NOP;    // The address remained ahead after the last iteration
     
     // check round number      
     cLOAD(`C_CURRENT_ROUNDS_NUM_STORE_ADDR);                                NOP;
