@@ -444,7 +444,7 @@ LB(9000);
     cSEL_ADDRREG(3);		                                                NOP;
     cADDRSTORE;		     		                                            NOP;
     cNOP;                                                                   NOP;
-    cVLOAD(`C_NUM_KEY_ROUNDS - 1);		                                        NOP; // Store the number of rounds into val register 0
+    cVLOAD(`C_NUM_KEY_ROUNDS - 1);		                                    NOP; // Store the number of rounds into val register 0
 
 // Loop subkey generation
     LB(`C_LABEL_KEY_EXPANSION);  
@@ -471,7 +471,7 @@ LB(9000);
             cRLOAD(0);                                                      NOP;
             cRSTORE(7);                                                     NOP;
             
-        cADDRINC(`C_KEY_COLUMN_SIZE_IN_BYTES - 1);                              NOP; // Go to addr = 315 (for the first iteration) with addr_reg2
+        cADDRINC(`C_KEY_COLUMN_SIZE_IN_BYTES - 1);                          NOP; // Go to addr = 315 (for the first iteration) with addr_reg2
 
         // SBOX substitution
         LB(`C_LABEL_KEY_SBOX_SUBSTITUTION);
@@ -825,6 +825,88 @@ LB(`C_LABEL_START_ENCRYPTION);
 	cHALT;				                                                    NOP;
     
 
+// ---------------- ENCRYPTION INDEX ----------------------------------------------------
+
+`define C_LABEL_INIT_ENCR_STEP       (1200)
+
+`define C_ENCR_INDEX_ADDR            (298)
+// Initialize the current number of the block to be encrypted to 0
+LB(`C_LABEL_INIT_ENCR_STEP);
+    cNOP;				                                                    VLOAD(0);
+    cNOP;				                                                    STORE(`C_ENCR_INDEX_ADDR);
+    cHALT;				                                                    NOP;
+
+// ---------------- AES CTR MODE --------------------------------------------------------
+/* 
+    Counter Generation
+*/
+
+`define C_COUNTER_ADDR_START                  (300)
+`define C_COUNTER_INCREMENTING_PART_BYTES     (4)
+`define C_PLAINTEXT_ADDR_START                (400)
+
+`define C_LABEL_AES_CTR                       (1100)
+`define C_LABEL_NONCE_LOOP                    (1101)
+`define C_LABEL_AES_CTR_FINAL_PART            (1102)
+`define C_LABEL_AES_CTR_XOR                    (1103)
 
 
+LB(`C_LABEL_AES_CTR);
 
+    // COUNTER GENERATION
+    
+    // Consider for incrementing only the last 32 bits of the counter and the others 92 are fixed to 0
+    // This can be changed anytime by receiving as input a nonce and also by changing the ratio nonce:counter
+ 
+    cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - `C_COUNTER_INCREMENTING_PART_BYTES - 1);                         VLOAD(`C_COUNTER_ADDR_START + 16);
+    cSETVAL(0);                                                             ADDRSTORE;
+    cNOP;                                                                   NOP;
+    
+    cNOP;				                                                    IXLOAD;
+    cNOP;				                                                    ADDC(`C_ENCR_INDEX_ADDR);
+    cNOP;				                                                    VAND(255);
+    cNOP;				                                                    RISTORE(-1);
+    cNOP;				                                                    IXLOAD;
+    cNOP;				                                                    ADDC(`C_ENCR_INDEX_ADDR);
+    cNOP;				                                                    SHIFT_RIGHT(8);
+    cNOP;				                                                    VAND(255);
+    cNOP;				                                                    RISTORE(-1);
+    cNOP;				                                                    IXLOAD;
+    cNOP;				                                                    ADDC(`C_ENCR_INDEX_ADDR);
+    cNOP;				                                                    SHIFT_RIGHT(16);
+    cNOP;				                                                    VAND(255);
+    cNOP;				                                                    RISTORE(-1);
+    cNOP;				                                                    IXLOAD;
+    cNOP;				                                                    ADDC(`C_ENCR_INDEX_ADDR);
+    cNOP;				                                                    SHIFT_RIGHT(24);
+    cNOP;				                                                    VAND(255);
+    cNOP;				                                                    RISTORE(-1);
+    
+    cNOP;                                                                   VLOAD(0);
+    LB(`C_LABEL_NONCE_LOOP);
+        cBRValNZDEC(`C_LABEL_NONCE_LOOP, 0);                                RISTORE(-1);
+
+    // Increment encryption index with the number of cells
+    cNOP;				                                                    LOAD(`C_ENCR_INDEX_ADDR);
+    cNOP;				                                                    VADD(`ARRAY_NR_CELLS);
+    cJMP(`C_LABEL_START_ENCRYPTION);				                        STORE(`C_ENCR_INDEX_ADDR);
+
+//    XOR ENCRYPTED COUNTER WITH PLAINTEXT
+
+LB(`C_LABEL_AES_CTR_FINAL_PART);
+    
+	cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - 1);		                        VLOAD(0);
+	cSETVAL(0);                                                             ADDRSTORE;  // Set value register 0 to data block size -1
+	
+    cVLOAD(`C_COUNTER_ADDR_START - 1);                                      NOP; 
+    cVSTACK_PUSH_LOAD(`C_PLAINTEXT_ADDR_START);                             NOP; 
+
+	LB(`C_LABEL_AES_CTR_XOR);
+        cVADD(1);                                                           CRLOAD; 
+        cSTACK_SWAP;                                                        NOP;
+        cVADD(1);                                                           NOP;
+        cNOP;                                                               CRXOR;
+        cSTACK_SWAP;                                                        CRSTORE;
+        cBRValNZDEC(`C_LABEL_AES_CTR_XOR, 0);                               NOP;
+        
+    cHALT;				                                                    NOP;
