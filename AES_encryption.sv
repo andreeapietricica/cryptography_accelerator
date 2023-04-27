@@ -333,25 +333,31 @@ LB(9000);
 `define C_MD5_MATRIX_ADDR_START             (280)
 
 // AES-128
-`define C_INITIAL_KEY_SIZE                  (16)
-`define C_NUM_KEY_ROUNDS                    (10)
-`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
-`define C_RCON_OFFSET                       (0)
-`define C_NUM_ENCRYPTION_ROUNDS             (10)
+`ifdef AES128
+    `define C_INITIAL_KEY_SIZE                  (16)
+    `define C_NUM_KEY_ROUNDS                    (10)
+    `define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (12)
+    `define C_RCON_OFFSET                       (0)
+    `define C_NUM_ENCRYPTION_ROUNDS             (10)
+`endif
 
 // AES-192
-//`define C_INITIAL_KEY_SIZE                  (24)
-//`define C_NUM_KEY_ROUNDS                    (8)
-//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (20)
-//`define C_RCON_OFFSET                       (2)
-//`define C_NUM_ENCRYPTION_ROUNDS             (12)
+`ifdef AES192
+    `define C_INITIAL_KEY_SIZE                  (24)
+    `define C_NUM_KEY_ROUNDS                    (8)
+    `define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (20)
+    `define C_RCON_OFFSET                       (2)
+    `define C_NUM_ENCRYPTION_ROUNDS             (12)
+`endif
 
 // AES-256
-//`define C_INITIAL_KEY_SIZE                  (32)
-//`define C_NUM_KEY_ROUNDS                    (7)
-//`define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
-//`define C_RCON_OFFSET                       (3)
-//`define C_NUM_ENCRYPTION_ROUNDS             (14)
+`ifdef AES256
+    `define C_INITIAL_KEY_SIZE                  (32)
+    `define C_NUM_KEY_ROUNDS                    (7)
+    `define C_NUM_ELEMENTS_WITHOUT_FIRST_COLUMN (28)
+    `define C_RCON_OFFSET                       (3)
+    `define C_NUM_ENCRYPTION_ROUNDS             (14)
+`endif
 
 `define C_LABEL_SBOX_STORE_LOOP             (9001)
 `define C_LABEL_KEY_STORE_LOOP              (9002)
@@ -660,6 +666,7 @@ LB(9000);
 `define C_LABEL_ADD_ROUND_KEY_STEP_LOOP    (1060)
 `define C_LABEL_ROUNDS_LOOP                (1061)
 `define C_LABEL_ADD_ROUND_KEY_STEP         (1062)
+`define C_LABEL_START_ENCRYPTION_CTR       (1063)
 
 
 LB(`C_LABEL_START_ENCRYPTION);
@@ -667,7 +674,9 @@ LB(`C_LABEL_START_ENCRYPTION);
 // Get from paramter the address of the data and store it into memory
     cPARAM;			                                                        NOP;
     cSTORE(`C_DATA_START_ADDR);			                                    NOP;
-    
+
+LB(`C_LABEL_START_ENCRYPTION_CTR);   
+
 // Set decrement to 1
     cVLOAD(1);		                                                        NOP;
 	cSETDEC;		                                                        NOP;
@@ -851,45 +860,51 @@ LB(`C_LABEL_START_ENCRYPTION);
 
 `define C_LABEL_INIT_ENCR_STEP       (1200)
 
-`define C_ENCR_INDEX_ADDR            (298)
+`define C_ENCR_INDEX_ADDR            (298)  // Stores the number of encrypted block
 // Initialize the current number of the block to be encrypted to 0
 LB(`C_LABEL_INIT_ENCR_STEP);
     cNOP;				                                                    VLOAD(0);
     cNOP;				                                                    STORE(`C_ENCR_INDEX_ADDR);
     cHALT;				                                                    NOP;
 
+
 // ---------------- AES CTR MODE --------------------------------------------------------
 /* 
     Counter Generation
 */
-`ifdef EVEN_BLOCK
-	`define C_COUNTER_ADDR_START              (300 + 512)
-	`define C_PLAINTEXT_ADDR_START            (400 + 512)
-`else
-	`define C_COUNTER_ADDR_START              (300)
-	`define C_PLAINTEXT_ADDR_START            (400)
-`endif
 
+`define C_PLAINTEXT_START_ADDR                (296)  // Stores the start address of the plaintext
 `define C_COUNTER_INCREMENTING_PART_BYTES     (4)
 
 `define C_LABEL_AES_CTR                       (1100)
 `define C_LABEL_NONCE_LOOP                    (1101)
 `define C_LABEL_AES_CTR_FINAL_PART            (1102)
-`define C_LABEL_AES_CTR_XOR                    (1103)
+`define C_LABEL_AES_CTR_XOR                   (1103)
 
 
 LB(`C_LABEL_AES_CTR);
 
+    // Get parameter - plaintext address
+    cPARAM;			                                                        NOP;
+    cSTORE(`C_PLAINTEXT_START_ADDR);			                            NOP;
+    
+    // Get from paramter the address of the data and store it into memory
+    cPARAM;			                                                        NOP;
+    cSTORE(`C_DATA_START_ADDR);			                                    NOP;
+	
     // COUNTER GENERATION
     
     // Consider for incrementing only the last 32 bits of the counter and the others 92 are fixed to 0
     // This can be changed anytime by receiving as input a nonce and also by changing the ratio nonce:counter
- 
-    cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - `C_COUNTER_INCREMENTING_PART_BYTES - 1);    VLOAD(`C_COUNTER_ADDR_START + 16);
-    cSETVAL(0);                                                             ADDRSTORE;
-    cNOP;                                                                   NOP;
+    // The counter is split into 4 different locations, each containing 8 bits from the counter. The rest of the locations till 16 will be 0
+    // The counter is calculated using the cell number and the block number (the current number of encryption)
     
-    cNOP;				                                                    IXLOAD;
+    cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - `C_COUNTER_INCREMENTING_PART_BYTES - 1);    CLOAD;  // On array side, load the address of the data to be encrypted. 
+    cSETVAL(0);                                                             VADD(16);       //For CTR mode, starting from C_DATA_START_ADDR will be stored the counter, not the plaintext
+    cNOP;                                                                   ADDRSTORE;
+    cVLOAD(1);                                                              NOP;
+    
+    cSETDEC;				                                                IXLOAD;
     cNOP;				                                                    ADDC(`C_ENCR_INDEX_ADDR);
     cNOP;				                                                    VAND(255);
     cNOP;				                                                    RISTORE(-1);
@@ -916,7 +931,7 @@ LB(`C_LABEL_AES_CTR);
     // Increment encryption index with the number of cells
     cNOP;				                                                    LOAD(`C_ENCR_INDEX_ADDR);
     cNOP;				                                                    VADD(`ARRAY_NR_CELLS);
-    cJMP(`C_LABEL_START_ENCRYPTION);				                        STORE(`C_ENCR_INDEX_ADDR);
+    cJMP(`C_LABEL_START_ENCRYPTION_CTR);				                    STORE(`C_ENCR_INDEX_ADDR);
 
 //    XOR ENCRYPTED COUNTER WITH PLAINTEXT
 
@@ -925,8 +940,9 @@ LB(`C_LABEL_AES_CTR_FINAL_PART);
 	cVLOAD(`C_DATA_BLOCK_SIZE_IN_BYTES - 1);		                        VLOAD(0);
 	cSETVAL(0);                                                             ADDRSTORE;  // Set value register 0 to data block size -1
 	
-    cVLOAD(`C_COUNTER_ADDR_START - 1);                                      NOP; 
-    cVSTACK_PUSH_LOAD(`C_PLAINTEXT_ADDR_START);                             NOP; 
+	cLOAD(`C_DATA_START_ADDR);                                              NOP;
+    cVADD(-1);                                                              NOP; 
+    cSTACK_PUSH_LOAD(`C_PLAINTEXT_START_ADDR);                              NOP; 
 
 	LB(`C_LABEL_AES_CTR_XOR);
         cVADD(1);                                                           CRLOAD; 
