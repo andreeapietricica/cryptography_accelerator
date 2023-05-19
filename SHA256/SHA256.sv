@@ -346,8 +346,8 @@ LB(10104);
 `define C_MESSAGE_SIZE_IN_32BIT_WORDS             (16)
 `define C_W_FINAL_SIZE_IN_32BIT_WORDS             (64)
 
-`define C_ROUND_CONSTANTS_NUM                     (64)
-`define C_HASH_VALUES_NUM                         (8)
+`define C_ROUND_CONSTANTS_NUM                 (64)
+`define C_HASH_VALUES_NUM                     (8)
 
 `define C_NOT_CONSTANT_ADDR   1000
 	
@@ -404,7 +404,6 @@ LB(`C_LABEL_SHA_ALGORITHM);
 	cPARAM;		                                                            NOP;
 	cSTORE(`C_INPUT_DATA_START_ADDR);		                                NOP; // Store begin address of the message
 
-	
 // Check if the first value from the input data is 0 or 1
 // 1 -> this is the beggining of a new message, so hash values must be reinitialized
 // 0 -> this is the continuation of a message, so has values should not be reinitialized
