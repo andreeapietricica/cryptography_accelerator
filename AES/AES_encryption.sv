@@ -330,7 +330,7 @@ LB(9000);
 `define C_INITIAL_KEY_START                 (300)
 `define C_KEY_COLUMN_SIZE_IN_BYTES          (4)
 `define C_RCON_ADDR_START                   (260)
-`define C_MD5_MATRIX_ADDR_START             (280)
+`define C_MDS_MATRIX_ADDR_START             (280)
 
 // AES-128
 `ifdef AES128
@@ -396,26 +396,26 @@ LB(9000);
     cVLOAD(54);                                                      	    NOP;
     cSTORE(`C_RCON_ADDR_START);	                                 	        NOP;
 
-// Store MD5 matrix - used for encryption
+// Store MDS matrix - used for encryption
     cVLOAD(2);                                                      	    NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START);	                                 	NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 5);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 10);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 15);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START);	                                 	NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 5);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 10);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 15);	                                NOP;
     cVLOAD(3);                                                      	    NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 1);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 6);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 11);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 12);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 1);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 6);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 11);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 12);	                                NOP;
     cVLOAD(1);                                                      	    NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 2);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 3);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 4);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 7);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 8);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 9);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 13);	                                NOP;
-    cSTORE(`C_MD5_MATRIX_ADDR_START + 14);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 2);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 3);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 4);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 7);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 8);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 9);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 13);	                                NOP;
+	cSTORE(`C_MDS_MATRIX_ADDR_START + 14);	                                NOP;
 
 // Store SBOX - used for both key expansion and data encryption
 
@@ -560,7 +560,7 @@ LB(9000);
                cVLOAD(`C_INITIAL_KEY_SIZE);                                 NOP;
                cVSUB(32);                                                   NOP;  // If AES key is not 256 bits, jump to normal computing of the column
                cBRNZ(`C_LABEL_XOR_Kj_COLUMN_NORMAL);                        NOP;
-               cVLOAD(15);                                                  NOP;  // If the current round number is 15, 14, 13 or 12 compute the column based on the rules for 256 bit key
+cVLOAD(15);                                                  NOP;  // If the current element index is 15, 14, 13 or 12 compute the column based on the rules for 256 bit key
                cBRCMPVal(`C_LABEL_COMPUTE_256_4_TH_COLUMN, 1);              NOP;
                cVLOAD(14);                                                  NOP;
                cBRCMPVal(`C_LABEL_COMPUTE_256_4_TH_COLUMN, 1);              NOP;
@@ -752,14 +752,14 @@ LB(`C_LABEL_START_ENCRYPTION_CTR);
     cBRZ(`C_LABEL_ADD_ROUND_KEY_STEP);                                      NOP;
     
 // Mix columns
-// Multiply in GF(2^8) MD5 matrix with every column of the data block
+// Multiply in GF(2^8) MDS matrix with every column of the data block
 // Multiply with 1 -> value stays the same
 // Multiply with 2 -> Shift left by 1 and then XOR with value 0x1B if the MSB was 1
 // Multiply with 3 -> Same for multiplying with 2, then XOR with the original value
     cLOAD(`C_DATA_START_ADDR);			                                    VLOAD(-1);
     cNOP;                                                                   NOP;
     
-    cVLOAD(`C_MD5_MATRIX_ADDR_START - 1);	                                CADD;
+cVLOAD(`C_MDS_MATRIX_ADDR_START - 1);	                                CADD;
     cSEL_ADDRREG(2);		                                                NOP;
     cADDRSTORE;		                                                        ADDRSTORE;
     cVLOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE - 1);		                        NOP;
@@ -768,10 +768,10 @@ LB(`C_LABEL_START_ENCRYPTION_CTR);
     LB(`C_LABEL_MIX_COLUMN_STEP);    // loop over data columns
         cVLOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE - 1);                           NOP;
 
-        LB(`C_LABEL_MIX_COLUMN_LOOP_ROWS);   // loop over rows from MD5 matrix
+LB(`C_LABEL_MIX_COLUMN_LOOP_ROWS);   // loop over rows from MDS matrix
            cVSTACK_PUSH_LOAD(`C_DATA_COLUMNS_OR_ROWS_SIZE-1);               VLOAD(0);
             cSETVAL(1);                                                     NOP;
-               LB(`C_LABEL_MIX_COLUMN_LOOP_ELEMENTS);  // loop over elements from row (for MD5 matrix) and column (for data)
+	LB(`C_LABEL_MIX_COLUMN_LOOP_ELEMENTS);  // loop over elements from row (for MDS matrix) and column (for data)
                    cRILOAD(1);                                              NOP;
                    // if val == 2
                    cVXOR(2);                                                RISTACK_PUSH_LOAD(1);
