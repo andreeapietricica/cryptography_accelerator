@@ -894,7 +894,7 @@ LB(`C_LABEL_AES_CTR);
 	
     // COUNTER GENERATION
     
-    // Consider for incrementing only the last 32 bits of the counter and the others 92 are fixed to 0
+    // Consider for incrementing only the last 32 bits of the counter and the others 96 are fixed to 0
     // This can be changed anytime by receiving as input a nonce and also by changing the ratio nonce:counter
     // The counter is split into 4 different locations, each containing 8 bits from the counter. The rest of the locations till 16 will be 0
     // The counter is calculated using the cell number and the block number (the current number of encryption)
