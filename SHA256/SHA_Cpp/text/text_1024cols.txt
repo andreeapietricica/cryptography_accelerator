@@ -1,0 +1,1024 @@
+hello world
+Cryptography represents an important part 
+of the information exchange nowadays
+providing secure communications and data integrity.
+There are many existing encryption algorithms
+that could provide the confidentiality and integrity
+data during transmission over different channels
+One of the most used cryptographic algorithms is AES
+Advanced Encryption Standard
+It was developed in 2001 by Vincent Rijmen
+and Joan Daemon, as a replacement for DES.
+that became outdated and insecure
+as technology advanced, mostly because
+of its short key length. The AES algorithm 
+is widely used in wireless security, file
+encryption, SSL/TLS etc.
+AES, also known by its original 
+name Rijndael, is a symmetric key algorithm,
+or secret-key algorithm, meaning that both
+ the encryption and the decryption are
+performed with the same key. 
+AES 
+is also a block cipher,
+that uses 128-bit, 192-bit or 256-bit key
+ to process 128-bit data blocks. 
+ AES comes with a key expansion
+algorithm, so that each encryption step
+is performed using different sub-keys.
+The following figure illustrates the 
+process of a 128-bit AES encryption.
+ The data
+block and the key are represented
+as 4x4 matrix,
+ where each element has 1 byte. 
+ Of
+course, 
+for key lengths of 192-bit
+ or 256-bit the matrix dimension would 
+ be 4x6 or 4x8. 
+ The output of each step 
+ represents an input for the following step.
+ The initial key passes
+ through a series of
+ transformations, in 10 different rounds
+ (for AES 128). 
+ For AES 192 and AES 256 there
+ are 8, respectively 7 rounds.
+ The subkey
+obtained in every round 
+is used in the Add round key 
+step from the encryption.
+Parallel implementations come with 
+a great advantage compared to the conventional
+ones: high speedup.
+ This is also the case for cryptographic 
+ algorithms, that
+can provide the same efficiency
+ in terms of security, but a lot faster.
+ In order to compare further 
+ the performance of the
+ AES implementation on the
+custom accelerator, I compiled
+ a list of papers in which different
+ methods of parallelization,
+ on different platforms, 
+ are used in order to achieve 
+ a great speedup for
+AES encryption.
+This paper
+ presents a high-throughput
+ bitsliced implementation of AES,
+ using a
+technique that redesigns all the
+ stages of the algorithm. They 
+ perform some optimizations
+like input rearrangement for Shift
+ Rows phase, replacing byte-wise operations
+with registers shifts or changing
+the S-box logic circuit in order to process up
+to 32 blocks of 128-bit input data at
+ the same time. The hardware platforms are 6
+different CUDA-enabled GPUs.
+The implementation eliminates the
+ computationally intensive 
+ operations in all
+the stages and enables each 
+CUDA thread to process 32 chunks of 128-bit input data
+simultaneously. Also, the 
+data representation is changed
+ from row-major to columnmajor
+in order to increase the performance.
+The row-major means that each
+ 128-bit chunk of data is
+ stored in four 32-bit registers.
+In the new column-major representation,
+ to store 32 blocks of input data,
+128x32-bit registers are needed.
+ The difference is that
+ instead of holding first bits of
+data in the first register,
+ it stores the least significant 
+ bits from all the 32 chunks of
+128-bit data. To summarize,
+ each register stores bits that
+ have an identical position
+from all the 32 data 
+blocks in the new column-major 
+approach. In this manner, each
+CUDA thread processes 32 
+chunks of 128-bit data.
+An example is in figure 2.1,
+ where R states for registers
+ and D states for blocks of
+data.
+Substitute bytes
+Normally, the S-box
+ lookup table takes as input
+ 8 bits at a time, so a data block is
+read from 8 registers from 
+the total of 128 registers for 16 times.
+ Substitute bytes
+stage is modified such that
+ instead of this approach, the 
+ registers where each block
+is stored (R0, R1, R2, . . . .R127)
+ are passed into the S-box logic
+ circuit 8 registers at a
+time and in this way, 32 chunks
+ of data are operated in parallel.
+Mix Columns step
+The data representation in this 
+step is also changed. Instead 
+of having each element
+representing 8 bits from 
+a single data chunk,
+ it stores now bits from the same position
+of 8 registers from 
+32x128-bit data chunks.
+6 Chapter 2. AES 
+parallelization related projects
+FIGURE 2.1: Data 
+row-major representation
+ (Left) vs. column-major
+representation (Right).
+ Source [7]
+Shift Rows step
+Based on the described 
+data representation,
+ Shift Rows is implemented by register
+shift and swapping 
+instead of the costly Byte shift and swapping.
+Add Round Key step
+This step is also 
+different. The main 
+idea is that instead of 
+applying the round key
+to all of the 32 data chunks 
+in parallel, each roun
+d key is expanded into 128 registers
+and then is XORed with 
+the 128 registers from the Mix Columns stage.
+AES can have multiple 
+modes of operation: ECB
+ (electronic code book), CBC
+(cipher block chaining)
+, CFB (cipher feedback),
+ OFB (output feedback) and CTR
+(counter). They 
+implemented ECB and 
+CTR modes. For the ECB mode, the input
+text is divided intro 128-bit
+ blocks. Every block is 
+ then encrypted with the same
+key. In the CTR mode, a
+ counter is encrypted using the same key.
+ The value of the
+counter depends on the i
+nput block number. For block 1,
+ a counter is encrypted. For
+block 2, the previous 
+counter + 1 is encrypted, and
+ so on. The encryption is then
+XORed with the correspo
+nding plaintext.
+Here are the results:
+FIGURE 2.2: Performance
+ comparison for ECB AES encryption on different
+GPU platforms . Source [7]
+2.1. “Fast AES Implementation:
+ A High-throughput Bitsliced Approach”-2019
+(Source [7])
+7
+FIGURE 2.3: Performance 
+comparison for CTR AES encryption on
+different GPU platforms . 
+Source [7]
+The best performance was
+ obtained in both cases using Nvidia
+ Tesla V100 (maximum
+1478.42 Gbps). This work is compared
+ to other related projects, 
+ where the
+results are much smaller,
+ for example maximum 605.9 
+ Gbps obtained in 2017 on a
+P100 GPU.
+8 Chapter 2. AES 
+parallelization related projects
+2.2 “AES Hardware Accelerator
+ on FPGA with Improved Throughput
+and Resource Efficiency”- 2017
+ (Source [4])
+This paper presents a
+ new solution for 128-bit AES
+ optimization, by customizing
+resources in FPGA and improving
+ the pipelining efficiency.
+ Memory partitioning is
+used to allow read and write
+ parallel operations. 
+ Other technique is sub-pipelining,
+that determines the operations
+ to pe performed in one clock 
+ cycle, for a frequency
+of 813MHz. The design is
+ implemented on FPGAs-XC5VLX85,
+ XC6VLX240T, and
+XC7VX690T devices.
+The main issue that was 
+slowing down the computation
+ was the access of the
+data and the key from 
+memory. The encryption 
+in pipelined so that each 
+round represents
+a stage.
+FIGURE 2.4: AES pipelined 
+implementation. Source [4]
+In order to improve this
+ pipelining, the memory 
+ is partitioned into multiple
+banks, to allow accessing 
+in just one clock cycle. 
+This is also possible because of the
+proposed design that has 
+every round of
+ the algorithm also pipelined. And more,
+each operation of the AES
+ is sub-pipelined by
+ adding registers between its steps.
+The next figure illustrates 
+the overall idea.
+FIGURE 2.5: One round 
+pipelined implementation.
+ Source [4]
+Each round’s steps are a
+lso pipelined, because 
+such a design increases
+ the efficiency
+as each operation is 
+divided into sub-operations,
+ thus it prevents stalling.
+2.2. “AES Hardware 
+Accelerator on FPGA with 
+Improved Throughput and
+Resource Efficiency.
+In the substitute bytes 
+stage, each byte of data is
+ replaced with a value from S-box
+and, as consequence,
+ this is also pipelined a
+ nd unrolled. More, the Substitute Bytes
+step can be merged with S
+hift Rows step,
+ because only one clock cycle is needed to
+perform both the re
+placement and the shifting of the result.
+Mix Columns stage sub-o
+perations are also unrolled and 
+pipelined. For the Add
+Round Key stage pipelining i
+s not necessary, be
+cause of the memory partitioning
+that allows multiple port
+s reading the key, so
+ that it will be XORed with the data
+array within one clock cycle.
+The best critic
+al path delay of the 
+design is 1.23 ns and the maximum frequency
+that allowed main
+taining one clock
+ per cycle is 813 MHz. The overall 
+ latency is 58
+clock cycles for 
+128-bit input plaintext and the best
+ achieved throughput is 104.06
+Gbps. A comparison
+ between all the target platforms 
+ can be seen in the next figure.
+FIGURE 2.6: Performance
+ review for all three FPGA platforms.
+Source [4]
+10 Chapter 2. AES 
+parallelization related projects
+2.3 “High Performance
+CUDAAES Implementation:
+ AQuantitative
+Performance Analysis Approach”-2017
+ (Source [1])
+This paper presents the 
+implementation of AES-128 on 
+three different GPU platforms
+using CUDA framework.
+GPU is a powerful
+ and popular hardware
+ accelerator, especially
+ for the graphic
+applications at
+ which it excels.
+ More than that, it became
+ a very efficient tool in
+terms of non-graphica
+l general computations, because 
+of its large number of threads
+that can process data in parallel. 
+For this implementation three
+ different GPU architectures
+were used:
+• Kepler (Nvidia GTX 780)
+• Maxwell (Nvidia GTX TITAN X)
+• Pascal (Nvidia GTX 1080)
+To further understand the 
+performed operation, an overview 
+of CUDA architecture
+is useful. In the next figure
+ there is a representation of a CUDA
+ computational
+grid. It is divided into blocks
+ of threads. All threads within
+ a block have access to
+different types of memories:
+• Registers and local memory:
+ These are private to each thread
+• Shared memory: It is private 
+to each block, so each thread within a specific
+block has access to it
+• Global and constant
+ memories: In is shared between all the 
+ blocks and threads
+from a grid
+FIGURE 2.7: CUDA 
+architecture. Source [5]
+The computational speed
+ is affected manly by
+ memory read and write operations.
+It is important to minimize
+ the latency of these accesses.
+ In general, there are
+four major implementation
+ techniques:
+2.3. “High Performance CUDA 
+AES Implementation: A Quantitative Performance
+Analysis Approach”-2017 (Source [1])
+11
+• Memory usage optimization
+• Parallel granularity
+• GPU platform specific optimization
+• CPU-GPU data transfer optimization
+Memory optimizations can be 
+done in three ways. The first 
+way is to place the
+encrypted plaintext into 
+the global memory to be
+ accessed by a pattern. The second
+method is to store the 
+necessary lookup tables 
+in the shared memory, as the access
+is faster. The third way 
+consists in the key expansion 
+pre-computation. This means
+that all the necessary 
+sub-keys are computed at
+ the beginning and then are stored
+into the global memory. 
+In this way, each thread
+ copies the keys into registers when
+the kernel is launched.
+Parallel granularity means
+ that either multiple threads 
+ can encrypt together one
+block of input data, or
+ each thread can encrypt a 
+ whole block. The second method
+is more suitable because it
+ does not lead to data dependencies 
+ between threads.
+GPU platform specific 
+optimization refers to the
+ resource occupancy. The application
+should be divided into 
+a number of blocks that allow 100% occupancy of the
+platform.
+CPU-GPU data transfer 
+optimization is mainly solved by the GPU. 
+The problem
+is that the data transfer between 
+CPU host and GPU device takes much
+ time. The
+platform hides this overhead by 
+overlapping the transfer 
+with the data processing.
+Of course, these are some 
+general optimizations that 
+could be performed. The
+work of the authors exploits
+ more techniques that improve the performance of the
+AES encryption. These 
+methods are described below.
+1. Key memory 
+location. The sub-keys are 
+stored in shared memory or in registers
+and they are accessed through warp
+ shuffling ( 
+ a warp is a set of 32 threads
+within a block, that execute
+ the same instruction).
+2. Computation granularity.
+ They made a single thread to encrypt
+ more than one
+data block.
+3. Thread block size.
+ The block size is important because 
+ if directly affects the
+resource occupancy. 
+The experiments have 1024, 512, 256 and
+ 128 block sizes.
+There are two main approaches:
+ shared memory approach (keys are stored in the
+shared memory) and
+ warp shuffle approach (keys 
+ are in registers and are accessed
+with the warp shuffle technique).
+ Based on the presented methods, the throughput
+was measured and the best 
+result was obtained for the Pascal
+ platform, NVIDIA
+GeForce GTX 1080. A
+ throughput of 279.86 Gbps was 
+ achieved using the shared
+memory approach, for a block 
+size of 128 threads and 32 bytes of
+ data processed by
+each thread from a total input
+ data of 512 MB.
+12 Chapter 2. 
+AES parallelization
+ related projects
+FIGURE 2.8: Results
+ for NVIDIA GeForce GTX 
+ 780 (Kepler) [Gbps].
+TPB = threads/block. 
+Source [1]
+FIGURE 2.9: Results for
+ NVIDIA GeForce GTX TITAN X 
+ (Maxwell)
+[Gbps]. TPB = threads/block.
+FIGURE 2.10: Results
+ for NVIDIA GeForce GTX 1080 
+ (Pascal) [Gbps].
+TPB = threads/block. Source [1]
+2.4. “Improving Encryption 
+Performance using MapReduce”-2015 (Source [6]) 13
+2.4 “Improving Encryption
+ Performance using MapReduce”-
+2015 (Source [6])
+The authors propose a different
+ type of 
+ parallelization of the 
+ AES encryption, by implementing
+it using the MapReduce framework.
+ This leads to
+ bigger computational
+speed with minimal
+ system resources utilization.
+MapReduce is a parallelization t
+echnique that
+ process large data 
+ sets on a cluster
+in a distributed manner.
+ Hadoop is an open 
+ source implementation 
+ of MapReduce.
+It processes data sets
+ distributed in cloud 
+ and stores them in Hadoop Distributed
+File System (HDFS). 
+It automatically partitions data 
+and solves dependencies.
+The MapReduce computation is split in 2 main functions:
+• Map
+• Reduce
+Map takes as 
+inputs key/value
+ pairs and produces
+ intermediary output pairs.
+The intermediate values 
+that have the same intermediate 
+key are grouped and passed
+to the reduce function.
+ The reduce method takes a key 
+ and a set of values for that
+key, generated by the map, then
+ it combines them to produce
+ a smaller set of values.
+The AES 
+algorithm is
+ parallelized in a 
+ way that allows multiple
+ mappers to encrypt
+many different blocks,
+ instead of processing them o
+ ne by one. Then, the reducer
+will combine these results. 
+The encryption can also be
+ done with different
+keys for individual blocks,
+ not just using a key for all 
+ input blocks. Based on that,
+the mapper will
+ take as input block_id/data pair,
+ that represent a chunk from the
+input data and
+ its identifier. Then,
+ the mapper will produce
+ a similar pair, but after
+the encryption. 
+The reducer will take
+ the results 
+ from different mappers and process
+them based on the
+ key used for the 
+ encryption. The number
+ of reducers is equal to
+the number of used 
+keys. This flow is 
+exemplified in the next figure.
+FIGURE 2.11: AES
+ encryption using
+ Hadoop MapReduce. Source [6]
+14 Chapter 2.
+ AES parallelization 
+ related projects
+The Hadoop configuration 
+parameters are also tuned
+ in order to reduce the
+memory access time or 
+to increase the number 
+of reducers to run in parallel, thus
+acquiring a better 
+throughput.
+FIGURE 2.12: Total
+ execution time for
+ AES encryption – MapReduce
+vs conventional way. 
+Source [6]
+The results showed 
+that the execution time
+ for processing a big amount of data
+is smaller using the
+ MapReduce implementation,
+ compared to a conventional one.
+This means that 
+parallelization using
+ this method improved the performance of the
+AES encryption.
+The throughput increased from 53 Mbps to 72 Mbps
+15
+Chapter 3
+Comparisons 
+and conclusions
+The four presented 
+AES implementations 
+showed that very 
+good results can be
+achieved by exploiting 
+parallelization techniques.
+ Each one has important features
+that allow optimization
+ over different stages of the algorithm.
+ Reducing encryption
+time is
+ the purpose
+ for all the 
+ described projects, 
+ and they managed to obtain
+it through rearranging data,
+ processing 
+ it over many threads,
+ storing in places that
+do not lead to
+ big latency, even 
+ distributing the blocks
+ over a bigger network or
+pipelining the AES rounds.
+FIGURE 3.1: Comparison between 
+the described AES parallelization
+techniques
+Best results were 
+obtained with the bitsliced
+ approach, on a GPU platform, 
+ mainly
+because of the way 
+they represented the data, 
+that helped processing
+ multiple blocks
+in parallel. Then,
+ the second CUDA implementation
+ offered a great throughput, but
+almost 6 times smaller
+ that the previous
+ one. Next,
+ the sub-pipelining
+ technique
+used in developing
+ the hardware accelerator was not that
+ performant compared to
+the GPU implementation,
+ but was the bes
+ t relatively to other 
+ similar works. The
+results of MapReduce 
+implementation also showed
+ an increase of 20%-30% 
+ in performance
+compared to a conventional
+ implementation of AES.
+ Parallel computing 
+ represents a type of 
+ computing architecture in
+ which multiple processing
+ units simultaneously execute
+ a complex application.
+ It means that a problem
+ is broken into smaller, 
+ independent parts that further
+ are split into a series 
+ of instructions. 
+ Instructions from each
+ part execute in the 
+ same time on different 
+ processors or cores 
+ that communicate via 
+ memory. A generic 
+ example is given in figure 1.
+Figure 1: Parallel 
+computing generic
+ example. Source [1]
+The main types of such
+ compute resources are:
+• a single computer with
+ multiple processors
+• several computers 
+connected by a network.
+Based on Flynn’s Taxonomy
+ classification, computing 
+ architectures are divided by two
+ dimensions, instruction stream and
+ data stream. The four classes are 
+ SISD (that is not a parallel computer), 
+ SIMD, MISD and MIMD. The last 
+ three types are parallel architectures
+ and stand for Single Instruction-Multiple Data, 
+ Multiple Instruction-
+ Single Data and Multiple I
+ nstruction-Multiple Data. The main idea
+ of these classes is illustrated in figure 
+ 2.
+Figure 2: Flynn’s Taxonomy
+ of Computer Architectures. Source [2]
+5
+The primary goal of parallel 
+computing is to increase 
+efficiency in computation and 
+obtaining faster application execution.
+Cryptography is the study of secure
+ communications techniques 
+ that prevent third parties from
+ receiving private data, such 
+ that only the sender and the 
+ ecipient of a message can 
+ view its content
+ s. Cryptography consists in encrypting 
+ and decrypting data. The algorithm for performing encrypti
+ on and decrypti
+ on is called a 
+ cipher. To complete t
+ he process, a ke
+ y in needed (usually 
+ a string of characters) and 
+ it is important because the ciphers
+ can be easily broken without it. The
+ encryption of a message consists
+ in modifying information such that
+ only the person who has the 
+ key can decrypt it. Putting these
+ algorithms together with
+ the key generation, we define a
+ cryptosystem. 
+ There are three general classes
+ of cryptographic algorithms: 
+ Symmetric-key algorithms, 
+ Asymmetric-key algorithms 
+ and Hash functions.
+Symmetric-key cryptography 
+refers to encryption methods 
+in which both the sender and 
+receiver share the same key. 
+This is also called secret-key
+ algorithm. Symmetric key ciphers 
+ are implemented as either block
+ ciphers or stream ciphers.
+ A block cipher splits input 
+ into blocks of plaintext as 
+ opposed to a stream cipher,
+ that divides the message into
+ individual bits or characters.
+ A well known block cipher is
+ Advanced Encryption Standard 
+ (AES), that encrypts and decrypts
+ data using 128/192/256-bit keys
+ into 128-bit blocks. It 
+ performs computation on 
+ bytes. Another algorithm 
+ of this kind is Data Encryption
+ Standard (DES), that encrypts
+ data in blocks of size of 64 bits 
+ each, which means 64 bits o
+ f plain text goes as the inp
+ ut and produces 64 bits of c
+ iphertext. The key length is 
+ 56 bits. 3DES is a symmetric-k
+ ey block cipher whic
+ h appli
+ es the DES cipher algorithm th
+ ree times to each da
+ ta block. It uses three 56-bit key
+ s. Altho
+ ugh, DES is not as efficient as AES is.
+Asymmetric-key algorithm
+s (or public-key algorithms) use pai
+red keys, a public one and a p
+rivate one. The public key may
+ be freely distributed, but the
+ private key is control
+ led only by the owner o
+f that key pair. Th
+e private
+key cannot be calculated k
+nowing the public key even though they are m
+athematically related. The 
+public key is used for 
+encryption, 
+while the s
+ecret key is used fo
+r decryption. Some ex
+amples of asymmetric-key
+ algorithms are Diffie–He
+ llman key exchange protoco
+ l, RSA (Rivest–Shamir–Adlem
+ an), DSA (Digital Signature A
+ lgorithm ) and various ellipti
+ c curve techniques.
+Figure 3: Symmetric-key crypto
+graphy (left side) and public-
+key cryptography (right side).S
+ource [3]
+Cryptographic Hash Functions ar
+e mathematical algorithms that
+ map data of an arbitrary si
+ ze (often called the "message
+ ") to a bit array of a fixed 
+ size (the “hash value”, “hash” or
+ “digest”). The
+ y represent ways 
+ to generate and utilize
+ keys to encrypt da
+ ta for either symmetr
+ ic or asymmetric encryption.
+6
+PAPER SEARCH PROCESS
+I compiled a lis
+t with keywords 
+when searching ab
+out the subject, in 
+order to identify easie
+r related articl
+es. These are some
+ of the relevant
+ words and phrases: cr
+ yptography, secre
+ /public key
+, encryption/decry
+ption, multiple CP
+Us/GPUs, multicore p
+rocessors, cipher, p
+arallel computing, par
+allel architectures, c
+ryptosystems, e
+xecute simultan
+eously, Flynn’s Taxonomy
+, AES, DES, Hash functio
+ns, SIMD, MISD, MIMD, pa
+rallelizing crypto
+graphy, parallel encryptio
+n/decryption.
+During this process, I pe
+rformed a list wi
+th possibly 
+releva
+nt papers for 
+this state-of-t
+he-art review. Thi
+s is the e preliminar
+y list:
+• High throughput
+ implementations
+ of cryptography algori
+ thms on GPU and 
+ FPGA - Vivek V
+ nugopal, Devu Manika
+ ntan Shila;
+• Parallelization of
+ Cryptographic Algorit
+ hm Based on Di
+ fferent Paral
+ lel Computing Technolog
+ ies - Lesia Mochurada
+ , Glib Shchura;
+• Design of a pa
+rallel computing base
+d cryptosystem - 
+Monica Dascalu, Lucian Milea etc;
+• Cellular automata co
+putations and secret key c
+ryptography – F
+ranciszek Sere
+dynski, Pascal B
+ouvry, Albert Y.Zomayad;
+• Elliptic curve cry
+ptography on em
+bedded multicore
+ systems - Junf
+ eng Fan, Kazuo Sakiy
+ ama, Ingri
+ d Ver
+ bauwhede;
+• Performance 
+Analysis of
+ a Symmetric Cryp
+ tographic Algorithm
+ on Multicore Architectures
+ - Adrian Pousa, Victoria S
+ anz, Armando de Giusti;
+• Improved Performance
+ of Advance Encryptio
+ n Standard using 
+ Parallel Computing 
+ - Vishal Pachori, Gu
+ njan Ansari, Neha Ch
+ audhary;
+• On Parallelizat
+ion of High-Speed 
+Processors for E
+lliptic Curve Cry
+ptography - Ki
+mmo Jarvinen, J
+orma Skytta;
+• Speedup for C
+ryptography on CUDA
+ Heterogeneous Archit
+ ecture - H
+ assan Youness;
+• A high speed
+ implementatio
+ n counter mod
+ e cryptography usin
+ g hardware parallelism 
+ - Samad Najjar
+ -Ghabel, Shamim Yousefi;
+• Extendin
+g Multicore Archite
+ctures with Cryptoptoces
+sors and Parallel Cryptography
+ - Cuauthemoc Man
+ cillas, Maria 
+ tographic hashi
+ ng: Developments in t
+ he last 25 years
+ - Neha Kishore, Priya Ra
+ ina;
+• Comparative study of ma
+ssively parallel cryptalysi
+s and cryptography 
+on CPU-GPU cluster - Ewa 
+Niewiadomska-Szynkiewicz
+odular Arithmetic on Co
+ntemporary Embedded Plat
+forms - Krishna
+ Chaitanya Pabbuleti, etc.
+• High-speed hardwar
+e implementation
+s of Elliptic Curv
+e Cryptography: A surv
+ey - GuerricMeurice
+ de Dormale, Jean-Jac
+ quesQuisquater;
+• Using GPU to e
+xploit paralleli
+sm on cryptography - Renan 
+Correa Detomini, Renata S
+polon Lobato;
+• Data-Paralle
+l Hashing Techniq
+ues for GPU Ar
+chitectures - Brent
+on Lessley, Hank 
+Childs;
+• A Parallel
+ Architecture 
+ for Secure FPGA Symm
+ etric Encryption - E.J. Sw
+ ankoski, R.R. Brook
+ s, V. Narayanan, M. K
+ andemir, M.J. Irwin;
+• Performance Analysi
+s and Parallel Impleme
+ntation of Dedicated Hash F
+unctions - Junko Nakajima,
+ Mitsuru Matsui;
+• Fast pa
+rallel table l
+ookups to accelerate
+ symmetric-key
+ cryptography - A. 
+ Murat Fiskiran, R.B
+ . Lee;
+• Case Study on FPGA 
+Performance of Parallel
+ Hash Functions - Pr
+ zemysław Zalewski, M
+ arcin Lukowiak, S
+ tanisław Radzis
+ zowski;
+I selected severa
+l relevant article
+s from the above lis
+t, based on their ab
+stract. The following
+ titles are those that
+ I rejected during 
+ this pro
+ hroughp
+ ut implem
+ entations of cryp
+ tography alg
+ orithms on GPU and FP
+ GA - Vivek Venugopa
+ l, Devu Manik
+ antan Shila;
+• Paralleli
+zation of Cryptog
+raphic Algori
+thm Based on Differ
+ent Parallel Computing 
+Technologies - Lesia
+ Mochur
+ ada, Glib Shchura
+• Design of
+ a parallel comput
+ ing based cryptos
+ stem - Mo
+ nica Dascalu, Lucian 
+ Milea etc;
+• Cellular automa
+ta computation
+s and secret key cry
+ptography – Franciszek 
+Seredynski, Pasc
+ Y.Zomayad;
+• Elliptic cu
+rve cryptography o
+n embedded mult
+icore systems -
+ Junfeng Fan, 
+ Kazuo Sakiyama, Ingr
+ id Verbauwhede;
+• Improved Performa
+nce of Advance Encryp
+tion Standard using Pa
+rallel Computing - Vi
+shal Pachori, Gunjan 
+Ansari, Neha Chaudhary;
+• On Parallelizatio
+n of High-Speed Proce
+ssors for El
+liptic Curve Cryp
+tography - Kimmo Jarvinen, Jorma Skytta;
+• A high speed 
+implementation coun
+ter mode cryptography usi
+ng hardware parallelism - 
+Samad Najjar-Ghabel, Shamim 
+Yousefi;
+• Extending Mul
+ticore Archit
+ectures w
+ith Cryptopt
+ocessors and Pa
+rallel Crypto
+graphy - Cuauthemo
+c Mancillas, Ma
+ria Mendez Réal;
+• Parallel cryp
