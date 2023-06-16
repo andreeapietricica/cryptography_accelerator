@@ -1,0 +1,64 @@
+hello world Cryptography represents an important part of the information
+ exchange nowadays providing secure communications and data integrity.
+There are many existing encryption algorithms that could provide the confidentiality and integrity
+data during transmission over different channels One of the most used cryptographic algorithms is AES
+Advanced Encryption Standard It was developed in 2001 by Vincent Rijmen
+and Joan Daemon, as a replacement for DES. that became outdated and insecure
+as technology advanced, mostly because of its short key length. The AES algorithm 
+is widely used in wireless security, file encryption, SSL/TLS etc.
+AES, also known by its original  name Rijndael, is a symmetric key algorithm,
+or secret-key algorithm, meaning that both  the encryption and the decryption are
+performed with the same key.  AES  is also a block cipher,
+that uses 128-bit, 192-bit or 256-bit key  to process 128-bit data blocks. 
+ AES comes with a key expansion algorithm, so that each encryption step
+is performed using different sub-keys. The following figure illustrates the 
+process of a 128-bit AES encryption. The data block and the key are represented
+as 4x4 matrix,  where each element has 1 byte.  Of course, for key lengths of 192-bit
+hello world Cryptography represents an important part of the information
+ exchange nowadays providing secure communications and data integrity.
+There are many existing encryption algorithms that could provide the confidentiality and integrity
+data during transmission over different channels One of the most used cryptographic algorithms is AES
+Advanced Encryption Standard It was developed in 2001 by Vincent Rijmen
+and Joan Daemon, as a replacement for DES. that became outdated and insecure
+as technology advanced, mostly because of its short key length. The AES algorithm 
+is widely used in wireless security, file encryption, SSL/TLS etc.
+AES, also known by its original  name Rijndael, is a symmetric key algorithm,
+or secret-key algorithm, meaning that both  the encryption and the decryption are
+performed with the same key.  AES  is also a block cipher,
+that uses 128-bit, 192-bit or 256-bit key  to process 128-bit data blocks. 
+ AES comes with a key expansion algorithm, so that each encryption step
+is performed using different sub-keys. The following figure illustrates the 
+process of a 128-bit AES encryption. The data block and the key are represented
+as 4x4 matrix,  where each element has 1 byte.  Of course, for key lengths of 192-bit
+hello world Cryptography represents an important part of the information
+ exchange nowadays providing secure communications and data integrity.
+There are many existing encryption algorithms that could provide the confidentiality and integrity
+data during transmission over different channels One of the most used cryptographic algorithms is AES
+Advanced Encryption Standard It was developed in 2001 by Vincent Rijmen
+and Joan Daemon, as a replacement for DES. that became outdated and insecure
+as technology advanced, mostly because of its short key length. The AES algorithm 
+is widely used in wireless security, file encryption, SSL/TLS etc.
+AES, also known by its original  name Rijndael, is a symmetric key algorithm,
+or secret-key algorithm, meaning that both  the encryption and the decryption are
+performed with the same key.  AES  is also a block cipher,
+that uses 128-bit, 192-bit or 256-bit key  to process 128-bit data blocks. 
+ AES comes with a key expansion algorithm, so that each encryption step
+is performed using different sub-keys. The following figure illustrates the 
+process of a 128-bit AES encryption. The data block and the key are represented
+as 4x4 matrix,  where each element has 1 byte.  Of course, for key lengths of 192-bit
+hello world Cryptography represents an important part of the information
+ exchange nowadays providing secure communications and data integrity.
+There are many existing encryption algorithms that could provide the confidentiality and integrity
+data during transmission over different channels One of the most used cryptographic algorithms is AES
+Advanced Encryption Standard It was developed in 2001 by Vincent Rijmen
+and Joan Daemon, as a replacement for DES. that became outdated and insecure
+as technology advanced, mostly because of its short key length. The AES algorithm 
+is widely used in wireless security, file encryption, SSL/TLS etc.
+AES, also known by its original  name Rijndael, is a symmetric key algorithm,
+or secret-key algorithm, meaning that both  the encryption and the decryption are
+performed with the same key.  AES  is also a block cipher,
+that uses 128-bit, 192-bit or 256-bit key  to process 128-bit data blocks. 
+ AES comes with a key expansion algorithm, so that each encryption step
+is performed using different sub-keys. The following figure illustrates the 
+process of a 128-bit AES encryption. The data block and the key are represented
+as 4x4 matrix,  where each element has 1 byte.  Of course, for key lengths of 192-bit
